@@ -1,0 +1,22 @@
+.barchart-bar {
+    fill: #424874;
+    cursor: pointer; 
+}
+
+.barchart-xlabels {
+    font-family: Arial, Helvetica, sans-serif;
+}
+
+.tooltip {
+    background-color: black;
+    border-radius: 5px;
+    padding: 5px;
+    font-family: Arial, Helvetica, sans-serif;
+    opacity: 0;
+    pointer-events: none;
+    text-align: center;
+    color: white;
+    position: absolute;
+    min-width: 30px;
+    font-size: 10px;
+}
