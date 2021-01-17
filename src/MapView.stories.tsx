@@ -4,10 +4,15 @@ import * as d3 from 'd3'
 import { ChartConfig } from './options'
 import { Story, Meta } from '@storybook/react/types-6-0'
 import * as topojson from 'topojson'
+import * as L from 'leaflet'
 import { FeatureCollection } from 'geojson'
+import 'leaflet/dist/leaflet.css'
+import './react-leaflet-fix.css'
+// const L = require('leaflet')
 
 interface MapViewProps {
     chartConfig?: ChartConfig
+    tileServer: number
 }
 
 // needed components:
@@ -23,10 +28,10 @@ interface MapViewProps {
 // so i think i will do it like Kibana without inventing another thing
 
 // @deprecated
-const MapView: React.FC<MapViewProps> = ({ chartConfig }) => {
+const MapView: React.FC<MapViewProps> = ({ chartConfig, tileServer }) => {
     const config = chartConfig ?? new ChartConfig()
     const ref = useRef<any>()
-    useEffect(() => {
+    const setupMap = () => {
         const svgElement = d3.select(ref.current)
         const g = svgElement.select('g')
 
@@ -110,19 +115,123 @@ const MapView: React.FC<MapViewProps> = ({ chartConfig }) => {
                 )
             }
         )
+    }
+
+    const drawSvgLayer = (
+        svgElement: d3.Selection<any, any, any, any>,
+        topoData: TopoJSON.Topology,
+        pathGen: d3.GeoPath<any, d3.GeoPermissibleObjects>,
+        map: L.Map
+    ) => {
+        const geoj = topojson.feature(
+            topoData,
+            topoData.objects.states
+        ) as FeatureCollection
+
+        const g = svgElement.select('g.map')
+
+        g.selectAll('path')
+            .data(geoj.features)
+            .join('path')
+            .attr('d', pathGen)
+            .attr('fill', 'lightsteelblue')
+            .attr('stroke-width', 1)
+            .attr('stroke', 'steelblue')
+            .attr('opacity', '0.5')
+
+        const otherLayer = svgElement.select('g.quality').attr('opacity', 0.5)
+
+        const pie = d3.pie()
+        const arcs = pie([100, 43, 100])
+
+        // Generate two fake points
+        // Map it according to the current scale
+        const p1 = map.project([0, 1], map.getZoom())
+        const p2 = map.project([0, 3], map.getZoom())
+
+        // calculate the distance in terms of map pixels
+        const length = Math.abs(p1.x - p2.x)
+
+        const colorInterpolate = d3.interpolateRgb('red', 'green')
+        const toTrans = map.latLngToLayerPoint(new L.LatLng(10, 10))
+        otherLayer
+            .selectAll('path')
+            .data(arcs)
+            .join('path')
+            .attr(
+                'd',
+                d3
+                    .arc()
+                    .innerRadius(length / 3)
+                    .outerRadius(length) as any
+            )
+            .attr('stroke', 'black')
+            .attr('stroke-width', 1)
+            .attr('fill', (_, i) => {
+                return colorInterpolate(i / 2)
+            })
+            .attr('transform', `translate(${toTrans.x}, ${toTrans.y})`)
+    }
+
+    useEffect(() => {
+        const parisCenter = [10, 10]
+        const initialZoom = 5
+
+        const map = L.map('map').setView(parisCenter as any, initialZoom)
+
+        const servers = [
+            'http://tile.openstreetmap.org/{z}/{x}/{y}.png',
+            'http://b.tile.stamen.com/toner/{z}/{x}/{y}.png',
+            'http://a.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png'
+        ]
+        const mapUrl = servers[tileServer]
+        L.tileLayer(mapUrl, {
+            maxZoom: 18
+        }).addTo(map)
+
+        L.svg().addTo(map)
+
+        const svgElement = d3.select('#map').select('svg')
+        svgElement.append('g').attr('class', 'map')
+        svgElement.append('g').attr('class', 'quality')
+        const transform = d3.geoTransform({
+            point: function (x, y) {
+                var point: any = map.latLngToLayerPoint(new L.LatLng(y, x))
+                this.stream.point(point.x, point.y)
+            }
+        })
+        var path = d3.geoPath().projection(transform)
+
+        d3.json('https://cdn.jsdelivr.net/npm/us-atlas@3/states-10m.json').then(
+            (us: TopoJSON.Topology) => {
+                drawSvgLayer(svgElement, us, path, map)
+                // This needs to be set up after we have the data ready
+                map.on('zoom', () => {
+                    drawSvgLayer(svgElement, us, path, map)
+                })
+            }
+        )
+
+        // const arcs = pie([{}])
     }, [])
+
     return (
-        <>
-            <div>Map view</div>
-            <svg
+        <div
+            id='map'
+            style={{
+                height: 500,
+                width: '100%'
+            }}
+        >
+            {/*<svg
                 ref={ref}
                 height={config.svgHeight}
                 width={config.svgWidth}
                 viewBox={`0 0 ${config.svgWidth} ${config.svgHeight}`}
             >
                 <g></g>
-            </svg>
-        </>
+            </svg> */}
+        </div>
     )
 }
 
@@ -137,5 +246,6 @@ Basic.args = {
     chartConfig: {
         svgHeight: 300,
         svgWidth: 716
-    }
+    },
+    tileServer: 0
 }
