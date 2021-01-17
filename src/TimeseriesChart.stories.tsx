@@ -2,7 +2,16 @@ import React from 'react'
 
 import { Story, Meta } from '@storybook/react/types-6-0'
 import TimeseriesChart, { TimeseriesChartProps } from './TimeseriesChart'
-import { scaleLinear } from 'd3'
+import axios from 'axios'
+
+// import { Client } from '@elastic/elasticsearch'
+
+const esHost = 'http://localhost:5000'
+// const esClient = new Client({ node: esHost })
+
+// async function getData(cli: Client) {
+//     return cli.search({ index: 'v2_events_2020_12_12' })
+// }
 
 export default {
     title: 'Visualization/TimeseriesChart',
@@ -31,6 +40,16 @@ function generateData(nPoints: number, scaleSecond: 60): any[] {
 
     return result
 }
+
+axios.post(`${esHost}/v2/dquery/test_transform/snrt`, {
+    query: {
+        // match_all: {}
+        bool: {
+            must: [],
+            filter: []
+        }
+    }
+})
 
 const tsData = generateData(100, 60)
 

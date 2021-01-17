@@ -30,10 +30,10 @@
   },
   "devDependencies": {
     "@babel/core": "^7.12.10",
-    "@storybook/addon-actions": "^6.1.11",
-    "@storybook/addon-essentials": "^6.1.11",
-    "@storybook/addon-links": "^6.1.11",
-    "@storybook/react": "^6.1.11",
+    "@storybook/addon-actions": "^6.1.14",
+    "@storybook/addon-essentials": "^6.1.14",
+    "@storybook/addon-links": "^6.1.14",
+    "@storybook/react": "^6.1.14",
     "@testing-library/jest-dom": "^4.2.4",
     "@testing-library/react": "^9.5.0",
     "@testing-library/user-event": "^7.2.1",
@@ -69,7 +69,12 @@
     "dist"
   ],
   "dependencies": {
+    "@types/axios": "^0.14.0",
     "@types/d3": "^6.2.0",
-    "d3": "^6.3.1"
+    "@types/geojson": "^7946.0.7",
+    "@types/topojson": "^3.2.2",
+    "axios": "^0.21.1",
+    "d3": "^6.3.1",
+    "topojson": "^3.0.2"
   }
 }

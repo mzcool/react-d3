@@ -1,7 +1,6 @@
 import React, { useEffect, useRef } from 'react'
 import * as d3 from 'd3'
 import { ChartConfig } from './options'
-import { axisLeft } from 'd3'
 export interface TimeseriesChartProps {
     // tooltip settings
     // markers
@@ -35,6 +34,9 @@ const TimeseriesChart: React.FC<TimeseriesChartProps> = ({
         const vline = svg.selectAll('.vline')
         const yExtend = config.yExtend()
         const dateBisector = d3.bisector((v: any) => v[aes.x])
+
+        // the x axis is
+
         const x = d3
             .scaleTime()
             .domain(d3.extent(data.map((v) => v[aes.x])) as any)
