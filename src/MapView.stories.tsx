@@ -8,6 +8,8 @@ import * as L from 'leaflet'
 import { FeatureCollection } from 'geojson'
 import 'leaflet/dist/leaflet.css'
 import './react-leaflet-fix.css'
+import { worldGeoJsonWithStats } from './queries'
+import { fileSize } from 'humanize-plus'
 // const L = require('leaflet')
 
 interface MapViewProps {
@@ -31,113 +33,73 @@ interface MapViewProps {
 const MapView: React.FC<MapViewProps> = ({ chartConfig, tileServer }) => {
     const config = chartConfig ?? new ChartConfig()
     const ref = useRef<any>()
-    const setupMap = () => {
-        const svgElement = d3.select(ref.current)
-        const g = svgElement.select('g')
-
-        // Equirectangular simply maps longitidue and latitude to the flat surface
-        // path is actually a path generator which takes the features
-        // and create the geometrics as pathes
-        const path = d3.geoPath(
-            d3
-                .geoEquirectangular()
-                // .geoMercator()
-                .translate([config.svgWidth / 2, config.svgHeight / 2])
-                .scale(config.svgWidth / 2 / Math.PI)
-        )
-
-        // we load te data here.. hmm. seems like we don't need a store to display something,
-        // isn't it nice?
-        // i mean we only need to store the time range and stuff
-        // not neccessarily the volatile data.
-        d3.json('http://178.62.232.185/topo/s10/gadm36_FIN_0.json').then(
-            (r: TopoJSON.Topology) => {
-                // okay, that's a very nice part of the code
-                // topojson library can help me simplifiy the map!
-                // without losing the topology and without gaps
-                let n = topojson.simplify(topojson.presimplify(r as any), 8)
-
-                // topojson -> geojson
-                const geoj = topojson.feature(
-                    n,
-                    n.objects['gadm36_FIN_0']
-                ) as FeatureCollection
-
-                // generate the path for real this time
-                g.selectAll('path')
-                    .data(
-                        geoj.features.filter(
-                            (x) => (x.properties as any).name != 'Antarctica'
-                        )
-                    )
-                    .join('path')
-                    .attr('d', path)
-                    .attr('fill', 'lightsteelblue')
-                // do not use stroke, this will cause performance issue
-
-                // this is for detecting whether it's a scale event in 'on zoom' handler
-                let scale = -1
-                svgElement.call(
-                    d3
-                        .zoom()
-                        .extent([
-                            [0, 0],
-                            [config.svgWidth, config.svgHeight]
-                        ])
-                        .scaleExtent([1, 8])
-                        .on('zoom', (x) => {
-                            // We only change the simplification level when the scale changes
-                            if (x.transform.k != scale) {
-                                scale = x.transform.k
-                                n = topojson.simplify(
-                                    topojson.presimplify(r as any),
-                                    8 - Math.round(x.transform.k)
-                                )
-                                const geoj = topojson.feature(
-                                    n,
-                                    n.objects['gadm36_FIN_0']
-                                ) as FeatureCollection
-                                g.selectAll('path')
-                                    .data(
-                                        geoj.features.filter(
-                                            (x) =>
-                                                (x.properties as any).name !=
-                                                'Antarctica'
-                                        )
-                                    )
-                                    .join('path')
-                                    .attr('d', path)
-                                    .attr('fill', 'lightsteelblue')
-                            }
-
-                            g.attr('transform', x.transform)
-                        })
-                )
-            }
-        )
-    }
 
     const drawSvgLayer = (
         svgElement: d3.Selection<any, any, any, any>,
-        topoData: TopoJSON.Topology,
+        geoj: FeatureCollection,
         pathGen: d3.GeoPath<any, d3.GeoPermissibleObjects>,
         map: L.Map
     ) => {
-        const geoj = topojson.feature(
-            topoData,
-            topoData.objects.states
-        ) as FeatureCollection
-
         const g = svgElement.select('g.map')
 
+        const valueAccessor = (n: string) => {
+            return (d: any) => d.properties[n]
+        }
+
+        const maxValue = d3.max(geoj.features.map(valueAccessor('views')))
+        const interpolator = d3.interpolateBlues
         g.selectAll('path')
             .data(geoj.features)
             .join('path')
             .attr('d', pathGen)
-            .attr('fill', 'lightsteelblue')
+            .attr('class', 'leaflet-interactive')
+            .attr('fill', (v) =>
+                interpolator(valueAccessor('views')(v) / maxValue)
+            )
             .attr('stroke-width', 1)
             .attr('stroke', 'steelblue')
             .attr('opacity', '0.5')
+            .on('mouseleave', (e, feat) => {
+                const container = d3
+                    .select(ref.current)
+                    .select('.tooltip-container')
+                    .style('display', 'none')
+
+                // const p = map.latLngToContainerPoint(
+                //     d3.geoCentroid(feat).reverse() as any
+                // )
+                // console.info('goto', p)
+            })
+            .on('mouseenter', (e, feat) => {
+                const p = map.latLngToContainerPoint(
+                    d3.geoCentroid(feat).reverse() as any
+                )
+                const container = d3
+                    .select(ref.current)
+                    .select('.tooltip-container')
+                    .style('display', null)
+
+                container
+                    .transition()
+                    .duration(100)
+                    .style('width', '100px')
+                    .style('z-index', '1111')
+                    .style('left', p.x + 'px')
+                    .style('top', p.y + 'px')
+                // set the title
+                container
+                    .select('.tooltip-header')
+                    .text(valueAccessor('name')(feat))
+                container
+                    .select('.tooltip-content')
+                    .html(
+                        `Views: ${valueAccessor('views')(
+                            feat
+                        )}<br/> Data: ${fileSize(
+                            valueAccessor('total')(feat) || 0
+                        )}`
+                    )
+            })
 
         const otherLayer = svgElement.select('g.quality').attr('opacity', 0.5)
 
@@ -202,15 +164,22 @@ const MapView: React.FC<MapViewProps> = ({ chartConfig, tileServer }) => {
         })
         var path = d3.geoPath().projection(transform)
 
-        d3.json('https://cdn.jsdelivr.net/npm/us-atlas@3/states-10m.json').then(
-            (us: TopoJSON.Topology) => {
-                drawSvgLayer(svgElement, us, path, map)
-                // This needs to be set up after we have the data ready
-                map.on('zoom', () => {
-                    drawSvgLayer(svgElement, us, path, map)
-                })
-            }
-        )
+        worldGeoJsonWithStats('snrt').then((r) => {
+            drawSvgLayer(svgElement, r, path, map)
+            map.on('zoom', () => {
+                drawSvgLayer(svgElement, r, path, map)
+            })
+        })
+
+        // d3.json('https://cdn.jsdelivr.net/npm/us-atlas@3/states-10m.json').then(
+        //     (us: TopoJSON.Topology) => {
+        //         drawSvgLayer(svgElement, us, path, map)
+        //         // This needs to be set up after we have the data ready
+        //         map.on('zoom', () => {
+        //             drawSvgLayer(svgElement, us, path, map)
+        //         })
+        //     }
+        // )
 
         // const arcs = pie([{}])
     }, [])
@@ -222,7 +191,12 @@ const MapView: React.FC<MapViewProps> = ({ chartConfig, tileServer }) => {
                 height: 500,
                 width: '100%'
             }}
+            ref={ref}
         >
+            <div className='tooltip-container'>
+                <div className='tooltip-header'>Tooltip</div>
+                <div className='tooltip-content'>The content here</div>
+            </div>
             {/*<svg
                 ref={ref}
                 height={config.svgHeight}
@@ -243,9 +217,6 @@ export default {
 const Template: Story<MapViewProps> = (args) => <MapView {...args}></MapView>
 export const Basic = Template.bind({})
 Basic.args = {
-    chartConfig: {
-        svgHeight: 300,
-        svgWidth: 716
-    },
+    chartConfig: new ChartConfig().setSize(716, 300),
     tileServer: 0
 }

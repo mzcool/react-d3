@@ -15,9 +15,9 @@ const Barchart: React.FC<BarchartProps> = ({
     chartConfig
 }) => {
     const config = chartConfig ?? new ChartConfig()
+    console.info(config.yExtend())
 
-    const { paddings, svgHeight } = config
-    const height = config.height()
+    const { height, width } = config
     const ref = useRef<any>()
 
     useEffect(() => {
@@ -49,12 +49,12 @@ const Barchart: React.FC<BarchartProps> = ({
             // the most common type of scale
             .scaleLinear()
             // it's better to take the inverse for easier calculation
-            .range(config.yExtend().reverse())
             .domain([0, d3.max(data.map((y) => y.y)) || 0])
+            .range(config.yExtend().reverse())
 
         xlabels
-            .attr('transform', `translate(0, ${height})`)
-            .call(d3.axisBottom(x))
+            .attr('transform', `translate(0, ${height - 20} )`)
+            .call(d3.axisBottom(x) as any)
             .call((g) => g.selectAll('.domain').remove())
             .call((g) => g.selectAll('line').remove())
             .call((g) => g.selectAll('text').attr('class', 'barchart-xlabels'))
@@ -68,14 +68,18 @@ const Barchart: React.FC<BarchartProps> = ({
             .attr('ry', 3)
             .attr('height', (d: any) => 0)
             .attr('width', x.bandwidth())
-            .attr('y', height)
+            .attr('y', height - 20)
             .call((enter) =>
                 enter
                     .transition()
                     .duration(200)
                     .attr('y', yAccessor)
-                    .attr('height', (d: any) => (height - y(d['y'])) as any)
+                    .attr(
+                        'height',
+                        (d: any) => (height - 20 - y(d['y'])) as any
+                    )
             )
+
             .on('mouseover', (d, datum) => {
                 tooltip
                     .html(datum.x + '<br/>views: ' + datum.y)
@@ -93,10 +97,7 @@ const Barchart: React.FC<BarchartProps> = ({
     return (
         <div ref={ref} style={{ display: 'inline-block' }}>
             <div className='tooltip'>Yes</div>
-            <svg
-                style={{ width: '300px', height: svgHeight }}
-                viewBox={`0 0 300 ${svgHeight}`}
-            >
+            <svg style={{ width, height }} viewBox={`0 0 ${width} ${height}`}>
                 <g className='bars'></g>
                 <g className='xlabels'></g>
             </svg>

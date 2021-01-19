@@ -2,16 +2,9 @@ import React from 'react'
 
 import { Story, Meta } from '@storybook/react/types-6-0'
 import TimeseriesChart, { TimeseriesChartProps } from './TimeseriesChart'
-import axios from 'axios'
-
-// import { Client } from '@elastic/elasticsearch'
-
-const esHost = 'http://localhost:5000'
-// const esClient = new Client({ node: esHost })
-
-// async function getData(cli: Client) {
-//     return cli.search({ index: 'v2_events_2020_12_12' })
-// }
+import { loadDataUsage, loadTimeseriesViews, unwrapTimeseries } from './queries'
+import { ChartConfig } from './options'
+import { fileSize, compactInteger } from 'humanize-plus'
 
 export default {
     title: 'Visualization/TimeseriesChart',
@@ -41,23 +34,66 @@ function generateData(nPoints: number, scaleSecond: 60): any[] {
     return result
 }
 
-axios.post(`${esHost}/v2/dquery/test_transform/snrt`, {
-    query: {
-        // match_all: {}
-        bool: {
-            must: [],
-            filter: []
-        }
-    }
-})
-
 const tsData = generateData(100, 60)
 
-const Template: Story<TimeseriesChartProps> = (args) => (
-    <TimeseriesChart {...args}></TimeseriesChart>
-)
-export const Realtime = Template.bind({})
-Realtime.args = {
-    data: tsData,
-    aes: { x: 'date', y: 'views' }
+const Template: Story<TimeseriesChartProps | any> = (args, { loaded }) => {
+    console.info(loaded)
+    return <TimeseriesChart {...args} {...loaded}></TimeseriesChart>
 }
+export const Default = Template.bind({})
+Default.args = {
+    data: tsData,
+    aes: {
+        x: 'date',
+        ySeries: [{ y: 'views' }]
+    }
+}
+
+export const Views = Template.bind({})
+Views['loaders'] = [
+    async () => ({
+        data: unwrapTimeseries(await loadTimeseriesViews(), ['views'])
+    })
+]
+Views.args = {
+    aes: {
+        x: 'date',
+        ySeries: [{ y: 'views', name: 'simultaneous viewers' }],
+        yMin: 0,
+
+        tooltipFormater: (s: any, datum: any) => {
+            return `${s.name}: ${compactInteger(datum[s.y])} viewers <br/>`
+        }
+    },
+    chartConfig: new ChartConfig().setSize(900, 404)
+}
+
+export const Data = Template.bind({})
+Data.args = {
+    aes: {
+        x: 'date',
+        yMin: 0,
+        tooltipHeader: 'Bandwidth',
+        ySeries: [
+            { y: 'cdnBandwidth', name: 'CDN bandwidth' },
+            { y: 'v2vBandwidth', name: 'V2V bandwidth' },
+            { y: 'totalBandwidth', name: 'Total Bandwidth' }
+        ],
+        tooltipFormater: (s: any, datum: any) => {
+            return `${s.name}: ${fileSize(datum[s.y])}/s <br/>`
+        }
+    },
+    chartConfig: new ChartConfig().setSize(900, 404)
+}
+Data['loaders'] = [
+    async () => ({
+        data: unwrapTimeseries(await loadDataUsage(), [
+            'cdn',
+            'v2v',
+            'total',
+            'cdnBandwidth',
+            'v2vBandwidth',
+            'totalBandwidth'
+        ])
+    })
+]

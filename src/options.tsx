@@ -7,20 +7,23 @@ class PaddingConfig {
 
 class ChartConfig {
     paddings = new PaddingConfig()
-    svgHeight = 185
-    svgWidth = 300
+    height = 185
+    width = 300
 
     public xExtend = () => {
-        return [this.paddings.left, this.svgWidth - this.paddings.right]
+        return [this.paddings.left, this.width - this.paddings.right]
     }
     public yExtend = () => {
-        return [this.paddings.top, this.svgHeight - this.paddings.bottom]
+        return [
+            this.paddings.top,
+            this.height - this.paddings.bottom - this.paddings.top
+        ]
     }
-    public width = () => {
-        return this.svgWidth - this.paddings.right - this.paddings.left
-    }
-    public height = () => {
-        return this.svgHeight - this.paddings.top - this.paddings.bottom
+
+    public setSize(width: number, height: number): ChartConfig {
+        this.height = height
+        this.width = width
+        return this
     }
 }
 
