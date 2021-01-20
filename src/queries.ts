@@ -231,7 +231,7 @@ export async function loadCountryStats(apiKey: string) {
                         {
                             range: {
                                 startedAt: {
-                                    gte: 'now-3h/h',
+                                    gte: 'now-5h/h',
                                     lt: 'now'
                                 }
                             }
@@ -304,4 +304,71 @@ export async function worldGeoJsonWithStats(apiKey: string) {
     })
 
     return geo
+}
+
+export async function loadQoeMetricsBy(apiKey: string, metrics: string) {
+    const aggs = {
+        rebuffering: {
+            percentiles: {
+                field: 'qoeRebufferingTime'
+            }
+        },
+        startupDelay: {
+            percentiles: {
+                field: 'qoeStartupDelay'
+            }
+        },
+        watchingTime: {
+            percentiles: {
+                field: 'qoeWatchingTime'
+            }
+        },
+        chunkSize: {
+            percentiles: {
+                field: 'qoeChunkSize.50'
+            }
+        }
+    }
+    const wantMetrics = metrics.split(',')
+
+    const newAggs = Object.keys(aggs)
+        .filter((k) => wantMetrics.includes(k))
+        .reduce((obj, key) => {
+            obj[key] = aggs[key]
+            return obj
+        }, {})
+
+    const query = {
+        query: {
+            bool: {
+                must: [],
+                filter: [
+                    {
+                        term: { apiKey: 'snrt' }
+                    },
+                    {
+                        range: {
+                            startedAt: {
+                                gte: 'now-1h/h'
+                            }
+                        }
+                    }
+                ]
+            }
+        },
+        size: 0,
+        aggs: {
+            response: {
+                terms: {
+                    field: 'content.keyword',
+                    size: 10
+                },
+                aggs: newAggs
+            }
+        }
+    }
+
+    return axios
+        .post(`${esHost}/v2/dquery/peer_entire/${apiKey}`, query)
+        .then((x) => x.data['aggregations']['response'])
 }

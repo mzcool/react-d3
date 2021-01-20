@@ -1,0 +1,7 @@
+.entered {
+    stroke: black;
+    stroke-width: 2;
+}
+.userchunk-cover {
+    pointer-events: all;
+}

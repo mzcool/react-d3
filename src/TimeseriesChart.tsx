@@ -3,6 +3,7 @@ import * as d3 from 'd3'
 import { ChartConfig } from './options'
 
 import './tooltip.css'
+import { getOrCreate } from './utils'
 export interface TimeseriesChartProps {
     // tooltip settings
     // markers
@@ -22,20 +23,6 @@ const functorKeyScale = (v: string, scale: any) => {
     return (d: any) => {
         return scale(d[v])
     }
-}
-
-const getOrCreate = (
-    c: d3.Selection<d3.BaseType, any, any, any>,
-    className: string,
-    element: string
-) => {
-    let s = c.select('.' + className)
-    // console.info(s['_groups'][0][0])
-    if (s.empty()) {
-        c.append(element).attr('class', className)
-        s = c.select(element + '.' + className)
-    }
-    return s
 }
 
 const TimeseriesChart: React.FC<TimeseriesChartProps> = ({

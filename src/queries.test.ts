@@ -3,6 +3,7 @@ import {
     loadContentStats,
     loadCountryStats,
     loadDataUsage,
+    loadQoeMetricsBy,
     loadTimeseriesViews,
     parseInterval,
     unwrapTimeseries,
@@ -69,6 +70,18 @@ describe('Load country stats', () => {
             expect(r.features[i].properties).toHaveProperty('views')
             expect(r.features[i].properties).toHaveProperty('cdn')
             expect(r.features[i].properties).toHaveProperty('v2v')
+        }
+    })
+})
+
+describe('Load the breakdown', () => {
+    it('should load the qoe rebufferingTime', async () => {
+        const r = await loadQoeMetricsBy('snrt', 'rebuffering,watchingTime')
+        expect(r['buckets']).toBeDefined()
+        if (r['buckets'].length > 0) {
+            expect(r['buckets'][0]['rebuffering']).toBeDefined()
+            expect(r['buckets'][0]['watchingTime']).toBeDefined()
+            console.info(r['buckets'][0]['rebuffering'])
         }
     })
 })
