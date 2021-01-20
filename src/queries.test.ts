@@ -81,7 +81,6 @@ describe('Load the breakdown', () => {
         if (r['buckets'].length > 0) {
             expect(r['buckets'][0]['rebuffering']).toBeDefined()
             expect(r['buckets'][0]['watchingTime']).toBeDefined()
-            console.info(r['buckets'][0]['rebuffering'])
         }
     })
 })
