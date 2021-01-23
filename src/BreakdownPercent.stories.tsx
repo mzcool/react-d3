@@ -11,24 +11,32 @@ import {
 import { config } from 'process'
 import './breakdown.css'
 import { QualityPercent } from './BreakdownPercent'
+import { loadContentStats, loadQoeMetricsBy } from './queries'
 
 interface QualityBreakdownPercentProps {
     data?: any
     chartConfig?: ChartConfig
 }
 
-const QualityBreakdownPercent: React.FC<QualityBreakdownPercentProps> = () => {
-    const threshold = [400, 700, 1400, 5600]
-    const colors = ['#C81D25', '#087E8B', '#0B3954', '#BFD7EA', 'red']
+const QualityBreakdownPercent: React.FC<QualityBreakdownPercentProps> = ({
+    data
+}) => {
+    const threshold = [1, 10]
+    const colors = ['#C13D59', '#F8D119', '#08C388'].reverse()
 
-    const values = [100, 200, 400, 600, 870, 900, 1000, 2000, 5000]
-
-    const thresholdPercents = EstimateDistribution(threshold, values)
-    const configuration = EstimationToConfiguration(thresholdPercents).map(
-        (v, i) => {
-            return { ...v, color: colors[i] }
+    data = data.map((v: any) => {
+        return {
+            content: v.key,
+            configuration: EstimationToConfiguration(
+                EstimateDistribution(
+                    threshold,
+                    Object.values(v.rebuffering.values)
+                )
+            ).map((v, i) => {
+                return { ...v, color: colors[i] }
+            })
         }
-    )
+    })
 
     const ref = useRef<any>()
 
@@ -49,6 +57,7 @@ const QualityBreakdownPercent: React.FC<QualityBreakdownPercentProps> = () => {
             .attr('height', height)
             .attr('fill', (d) => d.color)
             .attr('class', 'block')
+            .attr('transform', `translate(0, 5)`)
             .on('mouseenter', (e) => {
                 d3.select(e.srcElement).attr('class', 'block block-hovered')
             })
@@ -58,21 +67,17 @@ const QualityBreakdownPercent: React.FC<QualityBreakdownPercentProps> = () => {
     }
 
     useEffect(() => {
-        const svgElement = d3.select(ref.current)
-
-        const data = [
-            { content: 'c1', configuration: configuration },
-            { content: 'c2', configuration: configuration },
-            { content: 'c3', configuration: configuration }
-        ]
+        const svgElement = d3
+            .select(ref.current)
+            .attr('height', data.length * 50)
+            .attr('width', 500)
 
         data.map((_, i) =>
-            getOrCreate(svgElement, `block-container-${i}`, 'g').attr(
-                'transform',
-                `translate(0, ${i * 30})`
-            )
+            getOrCreate(svgElement, `block-container-${i}`, 'g')
+                .attr('height', 50)
+                .attr('transform', `translate(0, ${i * 50 + 20})`)
         ).map(
-            (c, i) =>
+            (c, i) => {
                 plotBar(
                     c,
                     400,
@@ -86,6 +91,8 @@ const QualityBreakdownPercent: React.FC<QualityBreakdownPercentProps> = () => {
                     })
                 )
 
+                getOrCreate(c, 'key-name', 'text').text(data[i].content)
+            }
             // plotPie(
             //     c,
             //     400,
@@ -120,3 +127,11 @@ const Template: Story<QualityBreakdownPercentProps | any> = (
 
 export const Default = Template.bind({})
 Default.args = {}
+
+Default['loaders'] = [
+    async () => ({
+        data: await loadQoeMetricsBy('snrt', 'content', 'rebuffering').then(
+            (x) => x['buckets']
+        )
+    })
+]
