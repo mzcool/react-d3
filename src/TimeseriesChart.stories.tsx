@@ -52,7 +52,7 @@ Default.args = {
 export const Views = Template.bind({})
 Views['loaders'] = [
     async () => ({
-        data: unwrapTimeseries(await loadTimeseriesViews(), ['views'])
+        data: unwrapTimeseries(await loadTimeseriesViews('snrt'), ['views'])
     })
 ]
 Views.args = {
@@ -87,7 +87,7 @@ Data.args = {
 }
 Data['loaders'] = [
     async () => ({
-        data: unwrapTimeseries(await loadDataUsage(), [
+        data: unwrapTimeseries(await loadDataUsage('snrt'), [
             'cdn',
             'v2v',
             'total',

@@ -192,7 +192,7 @@ Default.args = {
 }
 Default['loaders'] = [
     async () => ({
-        data: await loadQoeMetricsBy('snrt', 'rebuffering').then(
+        data: await loadQoeMetricsBy('snrt', 'content', 'rebuffering').then(
             (x) => x['buckets']
         )
     })

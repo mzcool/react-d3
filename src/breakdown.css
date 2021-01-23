@@ -5,3 +5,10 @@
 .userchunk-cover {
     pointer-events: all;
 }
+
+.block.block-hovered {
+    stroke: black;
+    stroke-width: 2;
+    cursor: pointer;
+}
+

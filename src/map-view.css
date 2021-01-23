@@ -2,3 +2,9 @@
     width: 256.5px !important;
     height: 256.5px !important;
 }
+
+.piechart-tooltip{
+    position: absolute;
+    right: 4px;
+    top: 1.5rem;
+}

@@ -13,7 +13,7 @@ import {
 describe('timeseries queries', () => {
     it('views timeseires', async () => {
         try {
-            const r = await loadTimeseriesViews()
+            const r = await loadTimeseriesViews('snrt')
             expect(r['interval']).toBeDefined()
             expect(r['buckets']).toBeDefined()
             const unwrapped = unwrapTimeseries(r, ['views'])
@@ -22,7 +22,7 @@ describe('timeseries queries', () => {
     })
 
     it('data / bandwidth timeseries queries', async () => {
-        const r = await loadDataUsage()
+        const r = await loadDataUsage('snrt')
         expect(r['interval']).toBeDefined()
         expect(r['buckets']).toBeDefined()
         if (r['buckets'].length > 0) {
@@ -76,7 +76,11 @@ describe('Load country stats', () => {
 
 describe('Load the breakdown', () => {
     it('should load the qoe rebufferingTime', async () => {
-        const r = await loadQoeMetricsBy('snrt', 'rebuffering,watchingTime')
+        const r = await loadQoeMetricsBy(
+            'snrt',
+            'content',
+            'rebuffering,watchingTime'
+        )
         expect(r['buckets']).toBeDefined()
         if (r['buckets'].length > 0) {
             expect(r['buckets'][0]['rebuffering']).toBeDefined()

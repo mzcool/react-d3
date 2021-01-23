@@ -2,32 +2,17 @@ import axios from 'axios'
 import { Feature, FeatureCollection } from 'geojson'
 import * as topojson from 'topojson'
 
-const esHost = 'http://localhost:5000'
+const esHost = 'http://localhost:6066/api/dev/proxy/es/zhuzhulovesyy'
 
-export async function loadTimeseriesViews() {
+export async function loadTimeseriesViews(apiKey: string) {
     const interval = '5m'
     return axios
-        .post(`${esHost}/v2/dquery/peer_5m/snrt`, {
-            query: {
-                bool: {
-                    must: [],
-                    filter: [
-                        {
-                            range: {
-                                // timestamp: {
-                                //     gte: '2021-01-11',
-                                //     lte: '2021-01-13'
-                                // }
-                                timestamp: {
-                                    gte: 'now-3h/h',
-                                    lt: 'now'
-                                }
-                            }
-                        }
-                    ]
-                }
+        .post(`${esHost}/peer_5m_*`, {
+            filter: {
+                from: 'now-5h/h',
+                apiKey: [apiKey],
+                to: 'now'
             },
-            size: 1,
             aggs: {
                 response: {
                     date_histogram: {
@@ -55,26 +40,15 @@ export async function loadTimeseriesViews() {
         })
 }
 
-export async function loadDataUsage() {
+export async function loadDataUsage(apiKey: string) {
     const interval = '5m'
     return axios
-        .post(`${esHost}/v2/dquery/peer_5m/snrt`, {
-            query: {
-                bool: {
-                    must: [],
-                    filter: [
-                        {
-                            range: {
-                                timestamp: {
-                                    gte: 'now-3h/h',
-                                    lt: 'now'
-                                }
-                            }
-                        }
-                    ]
-                }
+        .post(`${esHost}/peer_5m_*`, {
+            filter: {
+                from: 'now-5h/h',
+                to: 'now',
+                apiKey: [apiKey]
             },
-            size: 1,
             aggs: {
                 response: {
                     date_histogram: {
@@ -149,7 +123,6 @@ export function unwrapTimeseries(
         const obj = {
             date: new Date(v['key'])
         }
-
         cols.forEach((c) => {
             obj[c] = v[c]['value']
         })
@@ -160,90 +133,72 @@ export function unwrapTimeseries(
 // LoadContentStats will be the data for the content table anyway
 export async function loadContentStats(apiKey: string, topN: number) {
     const timeRange = 3 * 3600
-    return axios
-        .post(`${esHost}/v2/dquery/peer_5m/${apiKey}`, {
-            query: {
-                bool: {
-                    must: [],
-                    filter: [
-                        {
-                            range: {
-                                timestamp: {
-                                    gte: 'now-3h/h',
-                                    lt: 'now'
+    return (
+        axios
+            // .post(`${esHost}/v2/dquery/peer_5m/${apiKey}`, {
+            .post(`${esHost}/peer_session_*`, {
+                filter: {
+                    from: 'now-10h/h',
+                    to: 'now',
+                    apiKey: [apiKey]
+                },
+                aggs: {
+                    response: {
+                        terms: {
+                            field: 'content',
+                            size: topN
+                        },
+                        aggs: {
+                            views: {
+                                cardinality: {
+                                    field: 'pid'
                                 }
-                            }
-                        }
-                    ]
-                }
-            },
-            size: 0,
-            aggs: {
-                response: {
-                    terms: {
-                        field: 'content',
-                        size: topN
-                    },
-                    aggs: {
-                        views: {
-                            cardinality: {
-                                field: 'pid'
-                            }
-                        },
-                        cdn: {
-                            sum: {
-                                field: 'dataCDN'
-                            }
-                        },
-                        v2v: {
-                            sum: {
-                                field: 'dataV2V'
+                            },
+                            cdn: {
+                                sum: {
+                                    field: 'dataCDN'
+                                }
+                            },
+                            v2v: {
+                                sum: {
+                                    field: 'dataV2V'
+                                }
                             }
                         }
                     }
                 }
-            }
-        })
-        .then((x) => x.data['aggregations']['response'])
-        .then((x) => {
-            x['buckets'].map((v: any) => {
-                v['total'] = {
-                    value: v['cdn'].value || 0 + v['v2v'].value || 0
-                }
-                v['avgBandwidth'] = {
-                    value:
-                        (v['cdn'].value || 0 + v['v2v'].value || 0) / timeRange
-                }
-
-                return v
             })
-            return x
-        })
+            .then((x) => x.data['aggregations']['response'])
+            .then((x) => {
+                x['buckets'].map((v: any) => {
+                    v['total'] = {
+                        value: v['cdn'].value || 0 + v['v2v'].value || 0
+                    }
+                    v['avgBandwidth'] = {
+                        value:
+                            (v['cdn'].value || 0 + v['v2v'].value || 0) /
+                            timeRange
+                    }
+
+                    return v
+                })
+                return x
+            })
+    )
 }
 
 export async function loadCountryStats(apiKey: string) {
     return axios
-        .post(`${esHost}/v2/dquery/peer_entire/${apiKey}`, {
-            query: {
-                bool: {
-                    must: [],
-                    filter: [
-                        {
-                            range: {
-                                startedAt: {
-                                    gte: 'now-5h/h',
-                                    lt: 'now'
-                                }
-                            }
-                        }
-                    ]
-                }
+        .post(`${esHost}/peer_session_*`, {
+            filter: {
+                from: 'now-15h/h',
+                to: 'now',
+                apiKey: [apiKey]
             },
-            size: 0,
             aggs: {
                 response: {
                     terms: {
-                        field: 'countryISO.keyword',
+                        field: 'countryISO',
                         size: 65535
                     },
                     aggs: {
@@ -261,6 +216,12 @@ export async function loadCountryStats(apiKey: string) {
                             sum: {
                                 field: 'dataV2V'
                             }
+                        },
+                        chunkSize: {
+                            percentiles: {
+                                field: 'qoeChunkSize',
+                                percents: [10, 20, 30, 40, 50, 60, 70, 80, 90]
+                            }
                         }
                     }
                 }
@@ -274,7 +235,8 @@ export async function loadCountryStats(apiKey: string) {
                         v2v: v.v2v.value,
                         cdn: v.cdn.value,
                         views: v.views.value,
-                        total: v.v2v.value + v.cdn.value
+                        total: v.v2v.value + v.cdn.value,
+                        chunkSize: v.chunkSize.values
                     }
                 ])
             )
@@ -298,7 +260,10 @@ export async function worldGeoJsonWithStats(apiKey: string) {
         if (matched) {
             v.properties = { ...v.properties, ...matched }
         } else {
-            v.properties = { ...v.properties, ...{ views: 0, cdn: 0, v2v: 0 } }
+            v.properties = {
+                ...v.properties,
+                ...{ views: 0, cdn: 0, v2v: 0, chunkSize: {} }
+            }
         }
         return v
     })
@@ -306,26 +271,34 @@ export async function worldGeoJsonWithStats(apiKey: string) {
     return geo
 }
 
-export async function loadQoeMetricsBy(apiKey: string, metrics: string) {
+export async function loadQoeMetricsBy(
+    apiKey: string,
+    col: string,
+    metrics: string
+) {
     const aggs = {
         rebuffering: {
             percentiles: {
-                field: 'qoeRebufferingTime'
+                field: 'qoeRebufferingTime',
+                percents: [10, 20, 30, 40, 50, 60, 70, 80, 90]
             }
         },
         startupDelay: {
             percentiles: {
-                field: 'qoeStartupDelay'
+                field: 'qoeStartupDelay',
+                percents: [10, 20, 30, 40, 50, 60, 70, 80, 90]
             }
         },
         watchingTime: {
             percentiles: {
-                field: 'qoeWatchingTime'
+                field: 'qoeWatchingTime',
+                percents: [10, 20, 30, 40, 50, 60, 70, 80, 90]
             }
         },
         chunkSize: {
             percentiles: {
-                field: 'qoeChunkSize.50'
+                field: 'qoeChunkSize',
+                percents: [10, 20, 30, 40, 50, 60, 70, 80, 90]
             }
         }
     }
@@ -339,29 +312,16 @@ export async function loadQoeMetricsBy(apiKey: string, metrics: string) {
         }, {})
 
     const query = {
-        query: {
-            bool: {
-                must: [],
-                filter: [
-                    {
-                        term: { apiKey: 'snrt' }
-                    },
-                    {
-                        range: {
-                            startedAt: {
-                                gte: 'now-1h/h'
-                            }
-                        }
-                    }
-                ]
-            }
+        filter: {
+            from: 'now-15h/h',
+            to: 'now',
+            apiKey: [apiKey]
         },
-        size: 0,
         aggs: {
             response: {
                 terms: {
-                    field: 'content.keyword',
-                    size: 10
+                    field: col,
+                    size: 63555
                 },
                 aggs: newAggs
             }
@@ -369,6 +329,6 @@ export async function loadQoeMetricsBy(apiKey: string, metrics: string) {
     }
 
     return axios
-        .post(`${esHost}/v2/dquery/peer_entire/${apiKey}`, query)
+        .post(`${esHost}/peer_session_*`, query)
         .then((x) => x.data['aggregations']['response'])
 }

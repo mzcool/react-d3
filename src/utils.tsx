@@ -13,3 +13,28 @@ export function getOrCreate(
     }
     return s
 }
+
+export const EstimateDistribution = (
+    thresholds: number[],
+    deciles: number[]
+): number[] => {
+    if (deciles.length != 9) {
+        return thresholds.map((_) => 0)
+    }
+
+    return thresholds.map((v) => (d3.bisectCenter(deciles.sort(), v) + 1) * 10)
+}
+
+export const EstimationToConfiguration = (estimation: number[]) => {
+    estimation.unshift(0)
+    estimation.push(100)
+    const result = []
+
+    for (let i = 0; i < estimation.length - 1; i++) {
+        result.push({
+            fromPercent: estimation[i],
+            toPercent: estimation[i + 1]
+        })
+    }
+    return result
+}
