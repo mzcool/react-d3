@@ -118,6 +118,41 @@ const MapView: React.FC<MapViewProps> = ({ chartConfig, tileServer, aes }) => {
         //     })
         //     return { ...v, config }
         // })
+        const tileColorLegendConfig = new Array(10)
+            .fill(1)
+            .map((_, i) => (i + 1) / 10)
+            .map((v, i) => {
+                return { value: v, color: interpolator(v), x: i * 10 }
+            })
+
+        // This is the side effect !!!!
+        const legendContainer = d3
+                .select(ref.current)
+                .select('div.map-legend-container'),
+            tileLegendContainer = getOrCreate(
+                legendContainer,
+                'tile-legend',
+                'svg'
+            ).attr('height', 30)
+        tileLegendContainer
+            .selectAll('text.tile-legend')
+            .data(tileColorLegendConfig.filter((d, i) => i % 3 == 0))
+            .join('text')
+            .attr('class', 'tile-legend')
+            .attr('x', (d) => d.x)
+            .attr('y', 25)
+            .text((d) => Math.round(d.value * maxValue))
+
+        tileLegendContainer
+            .selectAll('rect.tile-legend')
+            .data(tileColorLegendConfig)
+            .join('rect')
+            .attr('class', 'tile-legend')
+            .attr('width', 10)
+            .attr('height', 10)
+            .attr('x', (d) => d.x)
+            // .attr('transform', (d) => `translate(${d.x}, 0)`)
+            .attr('fill', (d) => d.color)
 
         g.selectAll('path.tiles')
             .data(geoj.features)
@@ -141,7 +176,6 @@ const MapView: React.FC<MapViewProps> = ({ chartConfig, tileServer, aes }) => {
                 )
 
                 const pieChartConfig = getConfigFromProperties(feat.properties)
-                console.info(pieChartConfig, feat.properties)
 
                 const container = d3
                     .select(ref.current)
@@ -268,6 +302,7 @@ const MapView: React.FC<MapViewProps> = ({ chartConfig, tileServer, aes }) => {
                 <div className='tooltip-header'></div>
                 <div className='tooltip-content'></div>
             </div>
+            <div className='map-legend-container'></div>
         </div>
     )
 }

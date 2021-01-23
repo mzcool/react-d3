@@ -8,3 +8,13 @@
     right: 4px;
     top: 1.5rem;
 }
+.map-legend-container {
+    position: absolute;
+    bottom: 1rem;
+    left: 1rem;
+    z-index: 100000;
+}
+
+rect.tile-legend {
+    opacity: 0.5;
+}

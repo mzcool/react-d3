@@ -2,7 +2,7 @@ import axios from 'axios'
 import { Feature, FeatureCollection } from 'geojson'
 import * as topojson from 'topojson'
 
-const esHost = 'http://localhost:6066/api/dev/proxy/es/zhuzhulovesyy'
+const esHost = 'https://api.easybroadcast.fr/api/dev/proxy/es/zhuzhulovesyy'
 
 export async function loadTimeseriesViews(apiKey: string) {
     const interval = '5m'
